@@ -1,48 +1,55 @@
-# Actividad 5 — Control de brazo robótico mediante URDF, ESP32 y Python
+# Actividad — Lectura de potenciómetros mediante ESP32 y comunicación serial
 
 ## Descripción del proyecto
 
-En esta actividad se desarrolló un sistema de control para un brazo robótico utilizando un modelo en formato **URDF (Unified Robot Description Format)**.
+En esta actividad se desarrolló un sistema de adquisición de señales analógicas utilizando una placa **ESP32** y dos potenciómetros como elementos de entrada.
 
-El proyecto integra una simulación robótica con un sistema embebido basado en ESP32, permitiendo adquirir datos mediante sensores, transmitir información mediante comunicación UART y utilizar un script desarrollado en Python para controlar las articulaciones del robot.
+El objetivo principal es realizar la lectura de dos señales analógicas mediante los conversores ADC de la ESP32 y transmitir los valores obtenidos hacia un computador mediante comunicación serial.
 
-El objetivo principal es establecer una comunicación en tiempo real entre la ESP32 y el entorno de simulación, permitiendo controlar movimientos del brazo robótico y validar acciones como:
+El sistema permite observar en tiempo real la variación de las señales provenientes de los potenciómetros, estableciendo una base para aplicaciones posteriores de control, monitoreo o interacción con sistemas externos.
 
-- Movimiento de articulaciones.
-- Apertura y cierre de pinza.
-- Control mediante datos enviados desde hardware real.
-- Comunicación serial entre ESP32 y computador.
+El desarrollo integra:
 
+- Lectura de entradas analógicas mediante ADC.
+- Programación de ESP32 utilizando Arduino IDE.
+- Comunicación serial UART.
+- Transmisión de datos en tiempo real.
 
 ---
 
 # Arquitectura del sistema
 
 ```text
-                 Sensores
-                    |
-                    |
-                    v
-                ESP32
-            (MicroPython)
-                    |
-                    |
-              Comunicación UART
-                    |
-                    |
-                    v
-              Computador
-                  Python
-                    |
-                    |
-                    v
-              Simulación Robot
-                URDF + PyBullet
-                    |
-                    |
-                    v
-              Movimiento brazo
-              Apertura pinza
+        Potenciómetro 1
+              |
+              |
+          GPIO 4 ADC
+              |
+              |
+              v
+
+            ESP32
+
+              ^
+              |
+          GPIO 5 ADC
+              |
+              |
+        Potenciómetro 2
+
+
+              |
+              |
+              v
+
+        Comunicación Serial
+            115200 baudios
+
+              |
+              |
+              v
+
+          Computador
 ```
 
 ---
@@ -51,367 +58,241 @@ El objetivo principal es establecer una comunicación en tiempo real entre la ES
 
 ## ESP32
 
-La ESP32 funciona como sistema de adquisición y transmisión de datos.
+La ESP32 funciona como sistema de adquisición de datos analógicos.
 
-Funciones:
+Sus funciones principales son:
 
-- Lectura de sensores.
-- Procesamiento inicial de datos.
-- Comunicación UART con el computador.
-- Envío de comandos de control.
+- Leer las señales provenientes de los potenciómetros.
+- Convertir las señales analógicas mediante el ADC interno.
+- Enviar los valores obtenidos mediante comunicación serial.
 
 
 ---
 
-# Brazo robótico URDF
+# Potenciómetros
 
-El robot utilizado está definido mediante un archivo:
+Se utilizaron dos potenciómetros conectados como entradas analógicas.
 
-```text
-brazo.urdf
-```
+Configuración utilizada:
 
-El formato URDF permite describir:
-
-- Estructura mecánica del robot.
-- Enlaces (`links`).
-- Articulaciones (`joints`).
-- Materiales.
-- Geometrías.
-- Restricciones de movimiento.
+| Dispositivo | ESP32 |
+|---|---|
+| Potenciómetro 1 | GPIO 4 |
+| Potenciómetro 2 | GPIO 5 |
 
 
-La simulación interpreta este archivo para generar el modelo virtual del brazo robótico.
-
+Los valores obtenidos corresponden a la conversión ADC realizada por la ESP32.
 
 ---
 
 # Software utilizado
 
-## Python
+## Arduino IDE
 
-El computador utiliza Python para recibir información de la ESP32 y controlar la simulación.
-
-
-Librerías utilizadas:
+Lenguaje:
 
 ```text
-pybullet
-pyserial
-numpy
+C++
 ```
 
-Instalación:
+Librería utilizada:
 
-```bash
-pip install -r requirements.txt
+```cpp
+Arduino.h
 ```
 
+El programa implementado permite configurar la comunicación serial y realizar la lectura periódica de los sensores analógicos.
 
 ---
 
-# Organización del repositorio
+# Organización del proyecto
 
 ```text
-Actividad_5/
+Actividad/
 
 │
-├── URDF/
-│   |
-│   └── brazo.urdf
+├── main.cpp
 │
-├── ESP32/
-│   |
-│   └── main.py
+├── README.md
 │
-├── Python/
-│   |
-│   └── control_robot.py
-│
-├── evidencias/
-│   |
-│   ├── videos
-│   └── capturas
-│
-└── README.md
+└── evidencias/
+    |
+    ├── capturas
+    └── videos
 ```
 
 ---
 
 # Funcionamiento del sistema
 
-## 1. Lectura de sensores mediante ESP32
+## 1. Inicialización de la ESP32
 
-La ESP32 realiza la adquisición de señales provenientes de sensores.
+Durante el inicio del programa se configura la comunicación serial:
 
-Los datos obtenidos representan órdenes o valores de control para modificar el estado del robot.
+```cpp
+Serial0.begin(115200);
+```
 
-
-Proceso:
-
-1. Inicialización de sensores.
-2. Lectura periódica de datos.
-3. Conversión a formato digital.
-4. Envío mediante UART.
-
-
----
-
-# 2. Comunicación UART
-
-La comunicación entre ESP32 y computador se realiza mediante comunicación serial.
-
-Configuración utilizada:
+La ESP32 establece una velocidad de comunicación de:
 
 ```text
-Baudrate:
-115200
+115200 baudios
 ```
 
-Ejemplo de dato enviado:
+Además, envía mensajes iniciales indicando el estado del sistema:
 
 ```text
-Joint1:45
-Joint2:20
-Gripper:1
-```
+ESP32 INICIADO
 
-
-El computador recibe estos datos y los utiliza para actualizar el estado del robot.
-
-
----
-
-# 3. Control mediante Python
-
-El script desarrollado en Python realiza:
-
-- Apertura del puerto serial.
-- Lectura de datos enviados por ESP32.
-- Interpretación de comandos.
-- Actualización de articulaciones.
-- Control del movimiento del robot.
-
-
-Flujo:
-
-```text
-UART
- |
- v
-Python
- |
- v
-PyBullet
- |
- v
-Articulaciones robot
+Lectura de potenciometros:
 ```
 
 ---
 
-# 4. Movimiento de articulaciones
+# 2. Lectura de señales analógicas
 
-Cada articulación del robot posee un movimiento independiente.
+La ESP32 realiza la lectura de los dos canales ADC:
 
-El programa permite modificar:
+```cpp
+int pot1 = analogRead(POT1_PIN);
 
-- Posición angular.
-- Velocidad.
-- Estado de la articulación.
-
-
-Ejemplo:
-
-```python
-p.setJointMotorControl2()
+int pot2 = analogRead(POT2_PIN);
 ```
 
-permite enviar una posición objetivo al motor correspondiente.
-
+Cada lectura representa la posición del cursor del potenciómetro convertida a un valor digital mediante el ADC interno.
 
 ---
 
-# 5. Control de pinza
+# 3. Envío de datos por comunicación serial
 
-El sistema también permite validar el movimiento del efector final.
-
-Funciones:
-
-- Apertura de pinza.
-- Cierre de pinza.
-- Control mediante comandos recibidos.
-
+Los valores obtenidos son enviados al computador separados por una coma:
 
 Ejemplo:
 
 ```text
-Gripper = 1
+1520,2800
 ```
 
-Indica apertura.
+La estructura enviada es:
 
 ```text
-Gripper = 0
+Potenciómetro 1 , Potenciómetro 2
 ```
 
-Indica cierre.
+El envío se realiza mediante:
 
+```cpp
+Serial0.print()
+```
+
+y:
+
+```cpp
+Serial0.println()
+```
 
 ---
 
-# Simulación del robot
+# 4. Actualización de datos
 
-El modelo del brazo es cargado en el entorno de simulación mediante:
+El sistema realiza una nueva lectura cada:
 
-```python
-p.loadURDF("brazo.urdf")
+```cpp
+delay(50);
 ```
 
-PyBullet permite:
-
-- Visualización 3D.
-- Control de articulaciones.
-- Simulación física.
-- Validación del movimiento.
-
-
----
-
-# Pruebas realizadas
-
-Durante la actividad se realizaron las siguientes pruebas:
-
-## Prueba 1 — Carga del URDF
-
-Validación de:
-
-- Archivo correcto.
-- Modelo visible.
-- Articulaciones disponibles.
-
-
-Resultado esperado:
+equivalente a una actualización aproximada de:
 
 ```text
-Robot cargado correctamente
+20 muestras por segundo
 ```
 
-
 ---
 
-## Prueba 2 — Comunicación UART
+# Código principal
 
-Se verificó:
+Archivo:
 
-- Conexión ESP32-PC.
-- Recepción de datos.
-- Actualización en tiempo real.
+```text
+main.cpp
+```
 
+Funciones principales:
 
----
-
-## Prueba 3 — Movimiento de articulaciones
-
-Se validó:
-
-- Movimiento individual de joints.
-- Respuesta del robot.
-- Control de posición.
-
-
----
-
-## Prueba 4 — Apertura y cierre de pinza
-
-Se comprobó:
-
-- Activación del efector final.
-- Movimiento correcto.
-- Respuesta mediante comandos.
-
+- Configuración de pines analógicos.
+- Inicialización serial.
+- Lectura ADC.
+- Transmisión de datos.
 
 ---
 
 # Ejecución del proyecto
 
-## Programar ESP32
+## 1. Conexión del hardware
 
-Conectar la placa mediante USB.
+Conectar:
 
-
-Verificar puerto:
-
-```bash
-python -m serial.tools.list_ports
-```
-
-
-Subir programa:
-
-```bash
-mpremote connect COMx fs cp main.py :
-```
-
-
-Reiniciar:
-
-```bash
-mpremote connect COMx reset
-```
+- Potenciómetro 1 al GPIO 4.
+- Potenciómetro 2 al GPIO 5.
+- Alimentación de los potenciómetros.
+- Tierra común con la ESP32.
 
 
 ---
 
-# Ejecutar simulación
+## 2. Cargar programa en ESP32
 
-Ingresar a la carpeta Python:
+Abrir el archivo:
 
-```bash
-cd Python
+```text
+main.cpp
 ```
 
-Ejecutar:
+desde Arduino IDE.
 
-```bash
-python control_robot.py
+Seleccionar:
+
+- Placa ESP32 correspondiente.
+- Puerto COM asignado.
+
+Compilar y cargar el programa.
+
+---
+
+## 3. Visualizar datos
+
+Abrir el monitor serial:
+
+```text
+115200 baudios
+```
+
+La salida esperada es:
+
+```text
+ESP32 INICIADO
+Lectura de potenciometros:
+
+1200,2500
+1210,2498
+1220,2505
 ```
 
 ---
 
-# Evidencias
+# Resultados esperados
 
-El proyecto debe incluir:
+El sistema permite:
 
-- Capturas del brazo cargado en PyBullet.
-- Evidencia de movimiento de articulaciones.
-- Evidencia de apertura/cierre de pinza.
-- Video de comunicación en tiempo real ESP32 - Python.
-- Capturas del código desarrollado.
-
-
----
-
-# Resultados obtenidos
-
-El sistema permitió integrar un brazo robótico definido mediante URDF con un controlador externo basado en ESP32.
-
-La comunicación UART permitió transmitir información desde el sistema embebido hacia Python, donde los datos fueron interpretados para modificar el comportamiento del robot dentro del entorno de simulación.
-
-Se validó:
-
-- Carga del modelo URDF.
-- Comunicación en tiempo real.
-- Movimiento de articulaciones.
-- Control de la pinza.
-
+- Obtener lecturas analógicas mediante la ESP32.
+- Transmitir información en tiempo real.
+- Visualizar la variación de dos señales independientes.
+- Establecer comunicación entre un sistema embebido y un computador.
 
 ---
 
 # Conclusión
 
-La actividad permitió desarrollar una arquitectura híbrida entre hardware real y simulación robótica.
+La implementación permitió desarrollar un sistema básico de adquisición de datos utilizando una ESP32 y dos entradas analógicas.
 
-La ESP32 funcionó como unidad de adquisición y transmisión de datos, mientras que Python y PyBullet permitieron controlar y visualizar el comportamiento del brazo robótico.
-
-La integración de URDF, comunicación UART y simulación permitió establecer una base para sistemas robóticos donde dispositivos físicos controlan plataformas virtuales.
+Mediante la lectura ADC y la comunicación serial fue posible capturar las variaciones de los potenciómetros y transmitirlas hacia un computador, estableciendo una base para sistemas de control y monitoreo más avanzados.
